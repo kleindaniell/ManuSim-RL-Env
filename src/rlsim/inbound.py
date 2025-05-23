@@ -1,6 +1,6 @@
 import simpy
 
-from rlsim.control import Stores, DemandOrder
+from rlsim.control import Stores
 from rlsim.utils import random_number
 
 
@@ -37,19 +37,12 @@ class Inbound:
 
             duedate += self.env.now
             now = self.env.now
-
-            order_id = self.stores.add_po(product=product,
-                                          quantity=quantity,
-                                          
             
-            self.stores.po.products
-            demandOrder = DemandOrder(
+            demmandOrder = self.stores.create_do(
                 product=product,
                 quantity=quantity,
-                duedate=duedate,
-                arived=now,
+                due_date=duedate,
+                arrived_at=now
             )
-
-            yield self.stores.demand_orders[product].put(demandOrder)
-
-            # yield self.actual_demand[product].put(demand["quantity"])
+            
+            yield self.stores.inbound_demand_orders[product].put(demmandOrder["id"])

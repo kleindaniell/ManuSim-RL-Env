@@ -1,6 +1,4 @@
-import simpy
-
-from rlsim.control import ProductionOrder, Stores, DemandOrder
+# from rlsim.control import ProductionOrder, DemandOrder
 from rlsim.scheduler import Scheduler
 
 
@@ -21,14 +19,20 @@ class SimpleScheduler(Scheduler):
 
         while True:
 
-            demandOrder: DemandOrder = yield self.stores.demand_orders[product].get()
+            demandOrderId = yield self.stores.inbound_demand_orders[product].get()
+            demandOrder = self.stores.do[self.stores.do["id"]==demandOrderId]
+            demandQuantity = demandOrder["quantity"]
 
-            quantity = demandOrder.quantity
+            productionOrder = self.stores.create_po(
+                product=product,
+                quantity=demandQuantity,
+                scheduled=self.env.now,
+                priority=0
+            )
 
-            productionOrder = ProductionOrder(product=product, quantity=quantity)
-            productionOrder.schedule = self.env.now
-            productionOrder.priority = 0
             self.env.process(self.release_order(productionOrder))
+            
+            yield self.stores.outbound_demand_orders[product].put(demandOrderId)
 
     def run_scheduler(self):
 

@@ -35,8 +35,9 @@ class Stores:
             ("priority", np.int8),  # Order priority
             ("process_total", np.int16),  # Total process that order needs
             ("process_actual", np.int16),  # Actual process that order is
-            ("finished", np.bool),  # If order is finished
             ("finish_at", np.float64),  # Finished at
+            ("status", str),  # If order is finished
+            ("resource", str),  # Orders actual resource
         ]
         po_orders = np.zeros(size, dtype=po_dtype)
         po_orders["id"] = range(0, len(po_orders))
@@ -52,13 +53,14 @@ class Stores:
             ("arrived_at", np.float64),  # Arrived at
             ("delivered_at", np.float64),  # Delivered at
             ("delivered", np.bool),  # If order is delivered
+            ("processed", np.bool),  # If order is processed by scheduler
         ]
         do_orders = np.zeros(size, dtype=do_dtype)
         do_orders["id"] = range(0, len(do_orders))
 
         return do_orders
 
-    def add_po(
+    def create_po(
         self,
         product: str,
         quantity: np.int16 = 1,
@@ -68,60 +70,59 @@ class Stores:
         priority: np.int8 = 0,
         process_total: np.int16 = 0,
         process_actual: np.int16 = 0,
-        finished: np.bool = 0,
-        finish_time: np.float64 = 0,
+        finish_at: np.float64 = 0,
     ):
+        mask = self.po["used"].__invert__()
+        if any(mask):
+            po = self.po[mask][0]
+        else:
+            # Sanitize orders
+            pass
 
-        next_id = self.po[self.po["used"] == False]["id"][0]
+        po_id = po["id"]
+        po["product"] = product
+        po["quantity"] = quantity
+        po["due_date"] = due_date
+        po["scheduled"] = scheduled
+        po["released"] = released
+        po["priority"] = priority
+        po["process_total"] = process_total
+        po["process_actual"] = process_actual
+        po["finish_at"] = finish_at
 
-        po_order = (
-            next_id,
-            product,
-            quantity,
-            due_date,
-            scheduled,
-            released,
-            priority,
-            process_total,
-            process_actual,
-            finished,
-            finish_time,
-        )
+        self.po[self.po["id"] == po_id] = po
 
-        self.po[self.po["id"] == next_id] = po_order
+        return po
 
-        return next_id
-
-    def add_do(
+    def create_do(
         self,
-        id: np.int32,
-        used: np.bool,
-        product: "U12",
-        quantity: np.int16,
-        due_date: np.float64,
-        arrived_at: np.float64,
-        delivered_at: np.float64,
-        delivered: np.bool,
+        product: str,
+        quantity: np.int16 = 1,
+        due_date: np.float64 = 0,
+        arrived_at: np.float64 = 0,
+        delivered_at: np.float64 = 0,
+        delivered: np.int8 = 0,
+        processed: np.bool = False,
     ):
-        next_id = self.po[self.po["used"] == False]["id"][0]
+        mask = self.do["used"].__invert__()
+        if any(mask):
+            do = self.do[mask][0]
+        else:
+            # Sanitize orders
+            pass
 
-        po_order = (
-            next_id,
-            product,
-            quantity,
-            due_date,
-            scheduled,
-            released,
-            priority,
-            process_total,
-            process_actual,
-            finished,
-            finish_time,
-        )
+        do_id = do["id"]
+        do["product"] = product
+        do["quantity"] = quantity
+        do["due_date"] = due_date
+        do["arrived_at"] = arrived_at
+        do["delivered_at"] = delivered_at
+        do["delivered"] = delivered
+        do["processed"] = processed
 
-        self.po[self.po["id"] == next_id] = po_order
+        self.do[self.do["id"] == do_id] = do
 
-        return next_id
+        return do
 
     def _create_process_data(self) -> None:
         self.processes_name_list = {}
@@ -173,20 +174,6 @@ class Stores:
             self.wip[product] = simpy.Container(self.env)
 
 
-class ProductionOrder:
-    def __init__(self):
-        self.products: np.ndarray = np.array([])
-        self.quantitys: np.ndarray = np.array([])
-        self.schedules: np.ndarray = np.array([])
-        self.releaseds: np.ndarray = np.array([])
-        self.duedates: np.ndarray = np.array([])
-        self.finisheds: np.ndarray = np.array([])
-        self.prioritys: np.ndarray = np.array([])
-        self.process_totals: np.ndarray = np.array([])
-        self.process_finisheds: np.ndarray = np.array([])
-        self.ids: np.ndarray = np.array([])
-
-
 @dataclass
 class DemandOrder:
     def __init__(self):
@@ -196,3 +183,23 @@ class DemandOrder:
         self.ariveds: np.ndarray = np.array([])
         self.delivereds: np.ndarray = np.array([])
         self.ids: np.ndarray = np.array([])
+
+
+class ProductionOrder(np.ndarray):
+    def __new__(cls, size):
+        po_dtype = [
+            ("id", np.int32),  # Order ID
+            ("used", np.bool),  # If slod is used
+            ("product", "U12"),  # Product name
+            ("quantity", np.int16),  # Product quantity
+            ("due_date", np.float64),  # Due date
+            ("scheduled", np.float64),  # Scheduled to release
+            ("released", np.float64),  # Released time to shopfloor
+            ("priority", np.int8),  # Order priority
+            ("process_total", np.int16),  # Total process that order needs
+            ("process_actual", np.int16),  # Actual process that order is
+            ("finished", np.bool),  # If order is finished
+            ("finish_at", np.float64),  # Finished at
+        ]
+        obj = np.zeros(size, dtype=po_dtype).view(cls)
+        return obj

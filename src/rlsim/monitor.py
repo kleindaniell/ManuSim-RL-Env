@@ -1,6 +1,5 @@
 import simpy
 from rlsim.control import Stores
-from typing import Union, Tuple
 
 import pandas as pd
 import numpy as np
@@ -58,9 +57,13 @@ class Monitor:
         df_queue = df_wip.copy()
 
         for resource in resources_list:
+            self.stores.po["status"]
             orders_queue = list(self.stores.resource_input[resource].items)
             orders_queue.extend(self.stores.resource_output[resource].items)
             orders_queue.extend(self.stores.resource_transport[resource].items)
+            mask = np.isin(self.stores.po["id"], orders_queue)
+            df = pd.DataFrame()
+
             for order in orders_queue:
                 product = order.product
                 df_queue.loc[product, resource] += order.quantity

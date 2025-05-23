@@ -14,7 +14,6 @@ class Production:
     def _create_resources(self) -> None:
         self.resources = {}
         self.machine_down = {}
-        self.wait_queue = {}
 
         for resource in self.stores.resources:
             resource_config = self.stores.resources.get(resource)
@@ -24,9 +23,6 @@ class Production:
 
             self.machine_down[resource] = self.env.event()
             self.machine_down[resource].succeed()
-
-            # self.wait_queue[resource] = self.env.event()
-            # self.wait_queue[resource].succeed()
 
             self.env.process(self._breakdowns(resource))
             self.env.process(self._transportation(resource))
@@ -64,25 +60,34 @@ class Production:
 
     def _transportation(self, resource):
         while True:
-            productionOrder: ProductionOrder = yield self.stores.resource_output[
-                resource
-            ].get()
-            yield self.stores.resource_transport[resource].put(productionOrder)
+            productionOrderId = yield self.stores.resource_output[resource].get()
 
-            product = productionOrder.product
-            if productionOrder.process_total == productionOrder.process_finished:
-                productionOrder.finished = self.env.now
-                yield self.stores.resource_transport[resource].get()
-                yield self.stores.finished_orders[product].put(productionOrder)
-                yield self.stores.finished_goods[product].put(productionOrder.quantity)
+            po_mask = self.stores.po["id"] == productionOrderId
+            self.stores.po[po_mask]["status"] = "transport"
+
+            productionOrder = self.stores.po[po_mask]
+
+            product = productionOrder["product"]
+            process_total = productionOrder["process_total"]
+            process_actual = productionOrder["process_actual"]
+
+            if process_total == process_actual:
+                self.stores.po[po_mask]["finished_at"] = self.env.now
+                self.stores.po[po_mask]["finished"] = True
+
+                # yield self.stores.finished_orders[product].put(productionOrder)
+                yield self.stores.finished_goods[product].put(
+                    productionOrder["quantity"]
+                )
 
             else:
-                process_id = productionOrder.process_finished
+                process_id = productionOrder["process_actual"]
                 next_resource = self.stores.processes_value_list[product][process_id][
                     "resource"
                 ]
 
-                yield self.stores.resource_transport[resource].get()
+                self.stores.po[po_mask]["resource"] = next_resource
+                self.stores.po[po_mask]["status"] = "queue"
                 yield self.stores.resource_input[next_resource].put(productionOrder)
 
     def _production_system(self, resource):
@@ -93,14 +98,20 @@ class Production:
             yield self.machine_down[resource]
 
             # Get order from queue
-            # order = yield self._get_order_resource_queue(resource, "fifo")
-            productionOrder = yield self.stores.resource_input[resource].get(
-                lambda item: True
+            productionOrderId = self._get_order_resource_queue(resource, "fifo")
+            productionOrderId = yield self.stores.resource_input[resource].get(
+                lambda item: item == productionOrderId
             )
-            yield self.stores.resource_processing[resource].put(productionOrder)
+            # Put orderm on resource wip
+            # yield self.stores.resource_processing[resource].put(productionOrderId)
 
-            product = productionOrder.product
-            process = productionOrder.process_finished
+            po_mask = self.stores.po["id"] == productionOrderId
+            self.stores.po[po_mask]["status"] = resource
+
+            productionOrder = self.stores.po[po_mask]
+
+            product = productionOrder["product"]
+            process = productionOrder["process_actual"]
 
             # Check setup
             if last_product == product and last_process == process:
@@ -117,7 +128,7 @@ class Production:
                 # self.setups_cout[resource] += 1
                 # self.setups_time[resource] += setup_time
 
-            last_process = process
+            last_process = process.copy()
 
             with self.resources[resource].request() as req:
                 yield req
@@ -131,7 +142,7 @@ class Production:
                     process
                 ]["processing_time"].get("params")
 
-                order_quantity = productionOrder.quantity
+                order_quantity = productionOrder["quantity"]
 
                 start_time = self.env.now
 
@@ -143,24 +154,24 @@ class Production:
                     yield self.env.timeout(processing_time)
 
                 # Register data in order
-                productionOrder.process_finished += 1
+                productionOrder["process_actual"] += 1
 
                 end_time = self.env.now
-                yield self.stores.resource_processing[resource].get()
-                yield self.stores.resource_output[resource].put(productionOrder)
+                yield self.stores.resource_output[resource].put(productionOrderId)
+                self.stores.po[po_mask]["status"] = "queue"
                 # if self.env.now > self.warmup:
                 #     self.utilization[resource] += round(end_time - start_time, 8)
 
     def _get_order_resource_queue(self, resource, method):
-        self.wait_queue[resource] = self.env.event()
         match method:
             case "fifo":
-                productionOrder = yield self.stores.resource_input[resource].get()
+                productionOrdersIds = yield self.stores.resource_input[resource].items
+                productionOrderId = self.stores.po[
+                    self.stores.po["id"] == productionOrdersIds[0]
+                ]["id"]
 
             case "toc_penetration":
                 # TODO: implement filter for toc penetration method
-                productionOrder = yield self.stores.resource_input[resource].get()
+                pass
 
-        # order = yield self.stores.resource_input[resource].get()
-
-        return productionOrder
+        return productionOrderId

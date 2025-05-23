@@ -38,6 +38,11 @@ class Inbound:
             duedate += self.env.now
             now = self.env.now
 
+            order_id = self.stores.add_po(product=product,
+                                          quantity=quantity,
+                                          
+            
+            self.stores.po.products
             demandOrder = DemandOrder(
                 product=product,
                 quantity=quantity,

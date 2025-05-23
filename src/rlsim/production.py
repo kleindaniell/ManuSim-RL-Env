@@ -1,6 +1,6 @@
 import simpy
 
-from rlsim.control import ProductionOrder, Stores
+from rlsim.control import Stores, ProductionOrder
 from rlsim.utils import random_number
 
 
@@ -64,7 +64,9 @@ class Production:
 
     def _transportation(self, resource):
         while True:
-            productionOrder = yield self.stores.resource_output[resource].get()
+            productionOrder: ProductionOrder = yield self.stores.resource_output[
+                resource
+            ].get()
             yield self.stores.resource_transport[resource].put(productionOrder)
 
             product = productionOrder.product

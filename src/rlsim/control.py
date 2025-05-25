@@ -154,7 +154,7 @@ class Stores:
         # Outbound
         self.finished_orders = {}
         self.finished_goods = {}
-        # Inbound
+        # Demand orders
         self.inbound_demand_orders = {}
         self.outbound_demand_orders = {}
         # KPIs

@@ -56,6 +56,8 @@ class Monitor:
 
         df_queue = df_wip.copy()
 
+        # Make PIVOT TABLE
+
         for resource in resources_list:
             self.stores.po["status"]
             orders_queue = list(self.stores.resource_input[resource].items)

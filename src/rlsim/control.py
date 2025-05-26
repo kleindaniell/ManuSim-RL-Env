@@ -243,3 +243,7 @@ class ProductionOrder(np.ndarray):
         arr = np.array([raw_data], dtype=po_dtype)[0]
 
         return arr.view(cls)
+
+    @classmethod
+    def reset_counter(cls, value=0):
+        cls._id_counter = value

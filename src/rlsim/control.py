@@ -185,22 +185,22 @@ class DemandOrder:
         self.ids: np.ndarray = np.array([])
 
 
+@dataclass
 class ProductionOrder(np.ndarray):
-
     _id_counter = 0
 
     def __new__(
         cls,
         product: str,
         quantity: np.int16 = 1,
-        due_date: np.float64 = 0,
-        scheduled: np.float64 = 0,
-        released: np.float64 = 0,
+        due_date: np.float32 = 0,
+        scheduled: np.float32 = 0,
+        released: np.float32 = 0,
         priority: np.int8 = 9,
         process_total: np.int16 = 0,
         process_actual: np.int16 = 0,
         finished: np.bool = False,
-        finish_at: np.float64 = 0,
+        finish_at: np.float32 = 0,
         local: str = "backlog",
         id: np.int32 = None,
     ):
@@ -213,15 +213,15 @@ class ProductionOrder(np.ndarray):
                 ("id", np.int32),  # Order ID
                 ("product", "U50"),  # Product name
                 ("quantity", np.int16),  # Product quantity
-                ("due_date", np.float64),  # Due date
-                ("scheduled", np.float64),  # Scheduled to release
-                ("released", np.float64),  # Released time to shopfloor
+                ("due_date", np.float32),  # Due date
+                ("scheduled", np.float32),  # Scheduled to release
+                ("released", np.float32),  # Released time to shopfloor
                 ("priority", np.int8),  # Order priority
                 ("process_total", np.int16),  # Total process that order needs
-                ("process_actual", np.int16),  # Actual process that order is
+                ("process_finished", np.int16),  # Actual process that order is
                 ("finished", np.bool),  # If order is finished
-                ("finish_at", np.float64),  # Finished at
-                ("local", "U50"),  # Local on the production line
+                ("finish_at", np.float32),  # Finished at
+                ("status", "U50"),  # Local on the production line
             ]
         )
 

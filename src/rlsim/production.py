@@ -65,7 +65,7 @@ class Production:
             po_mask = self.stores.po["id"] == productionOrderId
             self.stores.po[po_mask]["status"] = "transport"
 
-            productionOrder = self.stores.po[po_mask]
+            productionOrder: ProductionOrder = self.stores.po[po_mask]
 
             product = productionOrder["product"]
             process_total = productionOrder["process_total"]

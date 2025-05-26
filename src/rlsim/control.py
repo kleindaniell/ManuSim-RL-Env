@@ -186,20 +186,60 @@ class DemandOrder:
 
 
 class ProductionOrder(np.ndarray):
-    def __new__(cls, size):
-        po_dtype = [
-            ("id", np.int32),  # Order ID
-            ("used", np.bool),  # If slod is used
-            ("product", "U12"),  # Product name
-            ("quantity", np.int16),  # Product quantity
-            ("due_date", np.float64),  # Due date
-            ("scheduled", np.float64),  # Scheduled to release
-            ("released", np.float64),  # Released time to shopfloor
-            ("priority", np.int8),  # Order priority
-            ("process_total", np.int16),  # Total process that order needs
-            ("process_actual", np.int16),  # Actual process that order is
-            ("finished", np.bool),  # If order is finished
-            ("finish_at", np.float64),  # Finished at
-        ]
-        obj = np.zeros(size, dtype=po_dtype).view(cls)
-        return obj
+
+    _id_counter = 0
+
+    def __new__(
+        cls,
+        product: str,
+        quantity: np.int16 = 1,
+        due_date: np.float64 = 0,
+        scheduled: np.float64 = 0,
+        released: np.float64 = 0,
+        priority: np.int8 = 9,
+        process_total: np.int16 = 0,
+        process_actual: np.int16 = 0,
+        finished: np.bool = False,
+        finish_at: np.float64 = 0,
+        local: str = "backlog",
+        id: np.int32 = None,
+    ):
+        if id is None:
+            id = cls._id_counter
+            cls._id_counter += 1
+
+        po_dtype = np.dtype(
+            [
+                ("id", np.int32),  # Order ID
+                ("product", "U50"),  # Product name
+                ("quantity", np.int16),  # Product quantity
+                ("due_date", np.float64),  # Due date
+                ("scheduled", np.float64),  # Scheduled to release
+                ("released", np.float64),  # Released time to shopfloor
+                ("priority", np.int8),  # Order priority
+                ("process_total", np.int16),  # Total process that order needs
+                ("process_actual", np.int16),  # Actual process that order is
+                ("finished", np.bool),  # If order is finished
+                ("finish_at", np.float64),  # Finished at
+                ("local", "U50"),  # Local on the production line
+            ]
+        )
+
+        raw_data = (
+            id,
+            product,
+            quantity,
+            due_date,
+            scheduled,
+            released,
+            priority,
+            process_total,
+            process_actual,
+            finished,
+            finish_at,
+            local,
+        )
+
+        arr = np.array([raw_data], dtype=po_dtype)[0]
+
+        return arr.view(cls)

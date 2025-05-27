@@ -5,10 +5,11 @@ from rlsim.utils import random_number
 
 
 class Production:
-    def __init__(self, stores: Stores, warmup: int = 0):
+    def __init__(self, stores: Stores, warmup: int = 0, order_selection_fn=None):
         self.stores: Stores = stores
         self.env: simpy.Environment = stores.env
         self.warmup = warmup
+        self.order_selection_fn = order_selection_fn
         self._create_resources()
 
     def _create_resources(self) -> None:
@@ -98,10 +99,14 @@ class Production:
             yield self.machine_down[resource]
 
             # Get order from queue
-            productionOrderId = self._get_order_resource_queue(resource, "fifo")
-            productionOrderId = yield self.stores.resource_input[resource].get(
-                lambda item: item == productionOrderId
-            )
+            if self.order_selection_fn:
+                productionOrderId = self.order_selection_fn(self.stores, resource)
+                productionOrderId = yield self.stores.resource_input[resource].get(
+                    lambda item: item == productionOrderId
+                )
+            else:
+                productionOrderId = self.stores.resource_input[resource].get()
+
             # Put orderm on resource wip
             # yield self.stores.resource_processing[resource].put(productionOrderId)
 
